@@ -1,8 +1,11 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+import argparse
 import requests
 import pokerHandler
 
+args = 0
 UTILISATEUR = "tristan"
 MOT_DE_PASSE = "1081849"
 DOMAINE = 'http://420.cstj.qc.ca/alainmartel/pokernirvana'
@@ -10,6 +13,61 @@ URL_JEU = '/texas/texas.php'
 URL_LOBBY = '/GestionPartie.php'
 PARAM_JEU = 'partieEnCours'
 login = {'pokerman': UTILISATEUR, 'MotDePasse': MOT_DE_PASSE, 'valider': ''}
+
+
+def setParser():
+    parser = argparse.ArgumentParser(description='C\'est un script permettant l\'automatisation du jeu PokerNirvana d\'Alain.')
+    parser.add_argument('-g', '--game', help='Spécifie qu\'elle partie jouer', required=False)
+    global args
+    args = parser.parse_args()
+
+
+def PartieSpecifique(r, s, num):
+    listParties = pokerHandler.Partie(r.text)
+
+    if num in listParties:
+        print("Partie #" + num + " sélectionné.\n")
+        print("Partie: ", num, "en cours:")
+
+        paramGET = {PARAM_JEU: num}
+
+        r = s.get(DOMAINE + URL_JEU, params=paramGET)
+        r.encoding = 'UTF-8'
+
+        paramAction = pokerHandler.Jouer(r.text)
+
+        print(paramAction)
+        r = s.post(DOMAINE + URL_JEU, params=paramGET, data=paramAction)
+    else:
+        print("Vous ne pouvez pas jouer à la partie #" + num + ".\n")
+        return
+
+
+def TouteLesParties(r, s):
+    print("Parties à votre tour:")
+
+    listParties = pokerHandler.Partie(r.text)
+
+    if len(listParties) == 0:
+        print("Aucune partie\n")
+    else:
+        print(listParties, "\n")
+
+        for parti in listParties:
+            print("Partie: ", parti, "en cours:")
+
+            paramGET = {PARAM_JEU: parti}
+
+            r = s.get(DOMAINE + URL_JEU, params=paramGET)
+            r.encoding = 'UTF-8'
+
+            paramAction = pokerHandler.Jouer(r.text)
+
+            print(paramAction)
+
+            r = s.post(DOMAINE + URL_JEU, params=paramGET, data=paramAction)
+
+            print("Partie suivante.\n")
 
 
 def main():
@@ -34,31 +92,10 @@ def main():
         print("Aucun")
     else:
         print(listTournoi, "\n")
-        print("Parties à votre tour:")
-
-        listParties = pokerHandler.Partie(r.text)
-
-        if len(listParties) == 0:
-            print("Aucune partie\n")
+        if args.game is not None and args.game.isdigit():
+            PartieSpecifique(r, s, args.game)
         else:
-            print(listParties, "\n")
-
-            for parti in listParties:
-                print("Partie: ", parti, "en cours:")
-
-                paramGET = {PARAM_JEU: parti}
-
-                r = s.get(DOMAINE + URL_JEU, params=paramGET)
-                r.encoding = 'UTF-8'
-
-                paramAction = pokerHandler.Jouer(r.text)
-
-                print(paramAction)
-
-                r = s.post(DOMAINE + URL_JEU, params=paramGET, data=paramAction)
-
-                print("Partie suivante.\n")
-                break
+            TouteLesParties(r, s)
     print("[Déconnexion...]")
     #r = s.post(DOMAINE + URL_LOBBY)
     print("[Déconnecté]\n")
@@ -67,4 +104,6 @@ def main():
     return
 
 if __name__ == '__main__':
+    setParser()
     main()
+    input("Appuyez sur une touche\n")

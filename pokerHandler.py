@@ -4,6 +4,30 @@ import re
 from bs4 import BeautifulSoup
 
 
+def filter_form_game(element):
+    return element.name == 'input' or element.name == 'select'
+
+
+def hasMultipleSubmit(elements):
+    nbrSubmit = 0
+
+    for element in elements:
+        if element.has_attr('type') and element['type'] == 'submit':
+            nbrSubmit += 1
+    return nbrSubmit > 1
+
+
+def jeuChangementStatut(formulaire):
+    requeteFormer = {}
+
+    for each in formulaire:
+        if each.has_attr('name'):
+            requeteFormer[each['name']] = (each['value'] if each.has_attr('value') else '')
+        elif each.has_attr('type') and each['type'] == 'submit':
+            requeteFormer[each['value']] = ''
+    return requeteFormer
+
+
 def Tournoi(html):
     numTournoi = []
 
@@ -26,50 +50,47 @@ def Partie(html):
     soup = BeautifulSoup(html, 'html.parser')
     elementsNomAfficher = soup.find_all('td', class_="AccueilParoleALog")
 
-    #print(elementsParti)
-
     for each in elementsNomAfficher:
         boutonParti = each.find_parent("tr").find("button")
         listParties.append(boutonParti.get_text())
     return listParties
 
 
-def LogiqueJeu(actions):
-    postParams = {}
-    if 'GRATOS' in actions:
-        postParams[actions['GRATOS']] = 'GRATOS'
-    if 'SUIVRE' in actions:
-        postParams[actions['SUIVRE']] = 'SUIVRE'
-    if 'ValeurRelance' in actions:
-        postParams['ValeurRelance'] = actions['ValeurRelance']
-    return postParams
+def jeuDecision(formulaire):
+    requeteFormer = {}
+    premierChoix = formulaire.pop(0)
+
+    if premierChoix.has_attr('name'):
+        requeteFormer[premierChoix['name']] = (premierChoix['value'] if premierChoix.has_attr('value') else '')
+    for element in formulaire:
+        if element.has_attr('name') and element['name'] == 'Decision' and 'Decision' in requeteFormer:
+            #On a déjà une décision
+            continue
+        else:
+            if element.name == 'select' and element.has_attr('name'):
+                requeteFormer[element['name']] = element.find('option').get_text()
+            else:
+                print("Problème jeuDecision")
+    return requeteFormer
+
+
+def PriseDeDecision(info):
+    return
 
 
 def Jouer(html):
-    formulaire = dict()
     soup = BeautifulSoup(html, 'html.parser')
-    elementsInput = soup.find('form').find_all('input')
-    #print(elementsActions)
-
-    for each in elementsInput:
-        #print(each)
-        if each.has_attr('name'):
-            #print(each['name'])
-            formulaire[each['value']] = each['name']
-    elementsSelect = soup.find('form').find_all('select')
-
-    for each in elementsSelect:
-        #print(each)
-        if each.has_attr('name'):
-            #print(each['name'])
-            formulaire[each['name']] = each.find('option').get_text()
-
-    #for k, v in formulaire.items():
-        #print(k, v)
-    action = LogiqueJeu(formulaire)
-    #print(action)
-
-    return action
+    elementsInput = soup.find('form').find_all(filter_form_game)
+    #print(elementsInput)
+    if hasMultipleSubmit(elementsInput):
+        #Cas d'un jeu avec Decision (GRATOS ABANDONNER RELANCER ValeurRelance)
+        print("Décision à prendre.\n")
+        return jeuDecision(elementsInput)
+    else:
+        #Cas de changement d'état de la partie: #NouvelleMain ,Position, Passer la prochain main
+        print("Changement de statut de la partie.\n")
+        return jeuChangementStatut(elementsInput)
+    return
 
 #DECISION: GRATOS ABANDONNER RELANCER ValeurRelance
 
