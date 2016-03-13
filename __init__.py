@@ -39,6 +39,7 @@ def setParser():
     parser.add_argument('-u', '--username', help='Le nom d\'utilisateur', required=False)
     parser.add_argument('-p', '--password', help='Le mot de passe du compte utilisateur', required=False)
     parser.add_argument('-i', '--input', type=login_parser, help='Fichier json contenant le login', required=False)
+    parser.add_argument('-o', '--output', help='Fichier de sortie pour le journal', required=False)
     global args
     args = parser.parse_args()
 
@@ -132,5 +133,7 @@ def main():
 
 if __name__ == '__main__':
     setParser()
+    if args.username is None or args.password is None:
+        sys.exit("Nom d'utilisateur et mot de passe non fourni.")
     main()
     input("Appuyez sur une touche\n")
