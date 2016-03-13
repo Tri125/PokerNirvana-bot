@@ -1,26 +1,50 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+import os
+import sys
+import json
 import argparse
 import requests
 import pokerHandler
 
-args = 0
-UTILISATEUR = "tristan"
-MOT_DE_PASSE = "1081849"
+args = {}
+loginFile = None
+
 DOMAINE = 'http://420.cstj.qc.ca/alainmartel/pokernirvana'
 URL_JEU = '/texas/texas.php'
 URL_LOBBY = '/GestionPartie.php'
 PARAM_JEU = 'partieEnCours'
-login = {'pokerman': UTILISATEUR, 'MotDePasse': MOT_DE_PASSE, 'valider': ''}
+login = {'pokerman': '', 'MotDePasse': '', 'valider': ''}
 
+
+def login_parser(name):
+    if os.path.exists(name):
+        with open(name) as data:
+            try:
+                data = json.load(data)
+            except:
+                sys.exit("Erreur lors du chargement du fichier \"" + data + "\"")
+    else:
+        sys.exit("Fichier \"" + name + "\" n'existe pas.")
+
+    if ('username' not in data) or ('password' not in data):
+        sys.exit("Fichier \"" + name + "\" ne contient pas un champ login ou password.")
+    global loginFile
+    loginFile = data
 
 def setParser():
     parser = argparse.ArgumentParser(description='C\'est un script permettant l\'automatisation du jeu PokerNirvana d\'Alain.')
     parser.add_argument('-g', '--game', help='Spécifie qu\'elle partie jouer', required=False)
+    parser.add_argument('-u', '--username', help='Le nom d\'utilisateur', required=False)
+    parser.add_argument('-p', '--password', help='Le mot de passe du compte utilisateur', required=False)
+    parser.add_argument('-i', '--input', type=login_parser, help='Fichier json contenant le login', required=False)
     global args
     args = parser.parse_args()
 
+    if loginFile is not None:
+        args.username = loginFile['username']
+        args.password = loginFile['password']
 
 def PartieSpecifique(r, s, num):
     listParties = pokerHandler.Partie(r.text)
@@ -71,6 +95,9 @@ def TouteLesParties(r, s):
 
 
 def main():
+    login['pokerman'] = args.username
+    login['MotDePasse'] = args.password
+
     print("Début de la session...\n")
     s = requests.Session()
 
