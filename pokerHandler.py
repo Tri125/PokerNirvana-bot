@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import bisect
 import re
 from bs4 import BeautifulSoup
+
+NO_TOURNAMENT = '-1'
 
 
 def filter_form_game(element):
@@ -42,6 +45,33 @@ def Tournoi(html):
         #print(text)
         numTournoi.append(regexTournoi.search(text).group(0))
     return numTournoi
+
+def TournoiPartie(html, username):
+    games = {NO_TOURNAMENT: list()}
+    soup = BeautifulSoup(html, 'html.parser')
+    elementsTable = soup.find_all('table')
+    regexNum = re.compile("[0-9]+")
+    dernierTournoi = NO_TOURNAMENT
+
+    for table in elementsTable:
+        tds = table.find('td', text=re.compile('tournoi', re.IGNORECASE))
+        #Table tournoi
+        if tds is not None:
+            numTournoi = int(regexNum.search(tds.get_text()).group(0))
+            games[numTournoi] = list()
+            dernierTournoi = numTournoi
+        #Table des Parties d'un tournoi
+        elif table.find('th', text=re.compile('partie', re.IGNORECASE)) is not None:
+            #Partie d'un tournoi
+            elementsPartie = table.find_all('td', string=username)
+
+            for partie in elementsPartie:
+                btnPartie = partie.find_parent('').find('button')
+                numPartie = int(regexNum.search(btnPartie.get_text()).group(0))
+                bisect.insort(games[dernierTournoi], numPartie)
+            dernierTournoi = NO_TOURNAMENT
+
+    return games
 
 
 def Partie(html):

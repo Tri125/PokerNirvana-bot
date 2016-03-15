@@ -3,6 +3,7 @@
 
 import os
 import sys
+import bisect
 import json
 import argparse
 import requests
@@ -16,7 +17,8 @@ URL_JEU = '/texas/texas.php'
 URL_LOBBY = '/GestionPartie.php'
 PARAM_JEU = 'partieEnCours'
 login = {'pokerman': '', 'MotDePasse': '', 'valider': ''}
-
+NO_TOURNAMENT = '-1'
+listTournoi = None
 
 def login_parser(name):
     if os.path.exists(name):
@@ -48,40 +50,48 @@ def setParser():
         args.password = loginFile['password']
 
 def PartieSpecifique(r, s, num):
-    listParties = pokerHandler.Partie(r.text)
+    global listTournoi
+    exist = False
 
-    if num in listParties:
-        print("Partie #" + num + " sélectionné.\n")
-        print("Partie: ", num, "en cours:")
+    for key, value in listTournoi.items():
+        if num in value:
+            exist = True
+            print("Partie #", num, " sélectionné.\n")
+            print("Partie: ", num, "en cours:")
 
-        paramGET = {PARAM_JEU: num}
+            paramGET = {PARAM_JEU: num}
 
-        r = s.get(DOMAINE + URL_JEU, params=paramGET)
-        r.encoding = 'UTF-8'
+            r = s.get(DOMAINE + URL_JEU, params=paramGET)
+            r.encoding = 'UTF-8'
 
-        paramAction = pokerHandler.Jouer(r.text)
+            paramAction = pokerHandler.Jouer(r.text)
 
-        print(paramAction)
-        r = s.post(DOMAINE + URL_JEU, params=paramGET, data=paramAction)
-    else:
-        print("Vous ne pouvez pas jouer à la partie #" + num + ".\n")
+            print(paramAction)
+            r = s.post(DOMAINE + URL_JEU, params=paramGET, data=paramAction)
+            break
+    if exist is False:
+        print("Vous ne pouvez pas jouer à la partie #", num, ".\n")
         return
 
 
 def TouteLesParties(r, s):
-    print("Parties à votre tour:")
-
-    listParties = pokerHandler.Partie(r.text)
-
-    if len(listParties) == 0:
+    global listTournoi
+    print("Parties à votre tour:\n")
+    parties = list()
+    for listPartie in listTournoi.values():
+        for partie in listPartie:
+            bisect.insort(parties, partie)
+    if len(parties) == 0:
         print("Aucune partie\n")
     else:
-        print(listParties, "\n")
+        print(parties, "\n")
 
-        for parti in listParties:
-            print("Partie: ", parti, "en cours:")
+    for key, listPartie in listTournoi.items():
 
-            paramGET = {PARAM_JEU: parti}
+        for partie in listPartie:
+            print("Partie: ", partie, "en cours:")
+
+            paramGET = {PARAM_JEU: partie}
 
             r = s.get(DOMAINE + URL_JEU, params=paramGET)
             r.encoding = 'UTF-8'
@@ -96,6 +106,8 @@ def TouteLesParties(r, s):
 
 
 def main():
+    global listTournoi
+
     login['pokerman'] = args.username
     login['MotDePasse'] = args.password
 
@@ -112,16 +124,21 @@ def main():
     else:
         print("Échec de connexion\n")
 
-    listTournoi = pokerHandler.Tournoi(r.text)
+    listTournoi = pokerHandler.TournoiPartie(r.text, args.username)
 
-    print("Participe aux tournois:")
+    print("Participe aux tournois:\n")
 
     if len(listTournoi) == 0:
         print("Aucun")
     else:
-        print(listTournoi, "\n")
+        for key in listTournoi.keys():
+            if key == NO_TOURNAMENT:
+                continue
+            else:
+                print(key, end="\t")
+        print("\n", end="\n")
         if args.game is not None and args.game.isdigit():
-            PartieSpecifique(r, s, args.game)
+            PartieSpecifique(r, s, int(args.game))
         else:
             TouteLesParties(r, s)
     print("[Déconnexion...]")
