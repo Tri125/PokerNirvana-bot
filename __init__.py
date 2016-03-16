@@ -37,7 +37,10 @@ def login_parser(name):
 
 def setParser():
     parser = argparse.ArgumentParser(description='C\'est un script permettant l\'automatisation du jeu PokerNirvana d\'Alain.')
-    parser.add_argument('-g', '--game', help='Spécifie qu\'elle partie jouer', required=False)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-g', '--game', help='Spécifie qu\'elle partie jouer', required=False)
+    group.add_argument('-t', '--tournament', help='Spécifie quel tournoi jouer', required=False)
+
     parser.add_argument('-u', '--username', help='Le nom d\'utilisateur', required=False)
     parser.add_argument('-p', '--password', help='Le mot de passe du compte utilisateur', required=False)
     parser.add_argument('-i', '--input', type=login_parser, help='Fichier json contenant le login', required=False)
@@ -73,6 +76,24 @@ def PartieSpecifique(r, s, num):
         print("Vous ne pouvez pas jouer à la partie #", num, ".\n")
         return
 
+def TournoiSpecifique(r,s, num):
+    global listTournoi
+    exist = False
+
+    for key, value in listTournoi.items():
+        if num is key:
+            exist = True
+            print("Tournoi #", num, " sélectionné.\n")
+            print("Tournoi: ", num, "en cours:")
+
+            for partiNum in value:
+                PartieSpecifique(r, s, partiNum)
+
+            print("Tournoi #", num, " terminé.\n")
+            break
+    if exist is False:
+        print("Vous ne pouvez pas jouer au tournoi #", num, ".\n")
+        return
 
 def TouteLesParties(r, s):
     global listTournoi
@@ -139,6 +160,8 @@ def main():
         print("\n", end="\n")
         if args.game is not None and args.game.isdigit():
             PartieSpecifique(r, s, int(args.game))
+        elif args.tournament is not None and args.tournament.isdigit():
+            TournoiSpecifique(r, s, int(args.tournament))
         else:
             TouteLesParties(r, s)
     print("[Déconnexion...]")
